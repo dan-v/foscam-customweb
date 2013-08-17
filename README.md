@@ -1,10 +1,11 @@
 foscam-customweb
 ================
 
-Customized default website for Foscam network cameras. This is for the Foscam 8910W camera, but it could work with others as well.
+Customized default website using twitter bootstrap for Foscam network cameras. The foscam_custom script automates the process of modifying the Web UI firmware and uploading it to the device.
 
 Requirements
 ===
+* Foscam network camera (mine is 8910w, but it may work with others)
 * Linux (main script 'foscam_customweb' is shell script)
 * Gawk (sudo apt-get install gawk)
 
@@ -22,6 +23,7 @@ Web UI Customizations
 
 Script Usage
 ===
+```
 ./foscam_customweb options
 This script unpacks the Foscam Web UI, add customizations, and re-packages it.
 
@@ -36,4 +38,5 @@ OPTIONS:
    -v      Verbose
    
 Example: ./foscam_customweb -w 2.4.10.5.bin -s 192.168.1.100 -u admin
+```
 
