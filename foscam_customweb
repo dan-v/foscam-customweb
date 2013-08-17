@@ -1,0 +1,322 @@
+#!/bin/bash
+# Functions borrowed from https://github.com/moldov/webui/blob/master/foscam_pkmgr
+
+function Get_Bytes
+{
+	xxd -ps -s $2 -l 4 -g 16 -c 4 "$1" 
+}
+
+function Get_LowHigh
+{
+	echo $1 | sed -r 's/([0-9a-f][0-9a-f])+([0-9a-f][0-9a-f])+([0-9a-f][0-9a-f])+([0-9a-f][0-9a-f])/\4\3\2\1/' 
+}
+
+
+function Get_Version
+{
+	Get_Bytes "$1" 12 | awk '{printf("%s.%s.%s.%s",strtonum("0x"substr($1,1,2)),strtonum("0x"substr($1,3,2)),strtonum("0x"substr($1,5,2)),strtonum("0x"substr($1,7,2)))}'
+}
+
+
+function Get_Hash
+{
+	xxd -ps -s $2 -c 1 "$1" | awk '{sum+=strtonum("0x"$1)} END{printf "%08x",sum}'
+}
+
+
+function WebUI_Unpack
+{
+	SEEK=16
+	END=`stat --printf %s "$1"`	
+	BASE=$1_extracted	
+	echo "Extracting Web UI to $BASE"
+	while [ $SEEK -ne $END ]; do
+	
+		#Get size of filename
+		N_SIZE=`echo $(Get_LowHigh $(Get_Bytes "$1" $SEEK)) | awk '{print strtonum("0x"$1)}'`
+		let SEEK+=4
+		
+		#Get file name
+		NAME=`xxd -s $SEEK -l $N_SIZE "$1" |xxd -r`
+		let SEEK+=$N_SIZE
+		
+		# Test for bit. if 01 its a file else folder
+		STR_BIT=`xxd -ps -s $SEEK -l 1 "$1"`
+		let SEEK+=1
+		if [ $STR_BIT = "00" ]; then
+			if [ ! -z $VERBOSE ]; then
+				echo ">Folder $NAME"
+			fi
+			mkdir -p $BASE$NAME
+		else
+			#Get file size
+			F_SIZE=`echo $(Get_LowHigh $(Get_Bytes "$1" $SEEK)) | awk '{print strtonum("0x"$1)}'`
+			let SEEK+=4	
+			if [ ! -z $VERBOSE ]; then
+				echo ">File $NAME ($F_SIZE)"
+			fi
+		
+			# Check file path
+			[  ! -d $BASE`dirname $NAME` ] && mkdir -p $BASE`dirname $NAME`
+			# Dump the file
+			dd if="$1" of=$BASE$NAME bs=1 skip=$SEEK count=$F_SIZE > /dev/null 2>&1
+			let SEEK+=$F_SIZE
+		fi
+	
+	done
+
+
+}
+
+function WebUI_Pack
+{
+	# create binary package
+	BIN_FILE=$OUTPUTFILE
+	VERS=$FOUNDVERSION
+	OUTPUT="`pwd`/$BIN_FILE"	
+	BASE="$1"
+	[ -f "$OUTPUT" ] && rm "$OUTPUT"
+	DATA="$OUTPUT.data"
+	HEADER="$OUTPUT.header"
+	# find files and folder
+	cd "$1"	
+
+	if [ ! -z $VERBOSE ]; then
+		echo "Remove existing headers"
+	fi
+	find -iname "*.header" -delete
+
+	if [ ! -z $VERBOSE ]; then
+		echo ">Adding version to output"
+	fi
+    echo "00:"`echo $VERS |awk -F. '{printf("%02x%02x%02x%02x",$1,$2,$3,$4)}'` |xxd -r >"$DATA"
+	
+	for item in `find | sed '/^.$/d' `; do
+	# debug for item in `cat files.list | sed '/^$/d' |sed 's/\//\.\//'`;do
+		if [ ! -z $VERBOSE ]; then
+			echo "Packing -> $item"
+		fi
+
+		NAME=`echo $item |sed 's/^\.//g'`
+		N_SIZE=$(Get_LowHigh `echo -n $NAME | wc -m | awk '{printf("%08x",$1)}'`)
+
+	if [ -f $item ]; then
+	
+		F_SIZE=$(Get_LowHigh `stat --printf %s $item | awk '{printf("%08x",$1)}'`)
+
+		# create the header file we need to process by step
+		RAW_HEX=$N_SIZE`echo -n $NAME | xxd -ps`"01"$F_SIZE
+
+	else
+
+		# create the header file for folder
+		RAW_HEX=$N_SIZE`echo -n $NAME | xxd -ps`"00"
+	fi
+
+		CAR=`echo $RAW_HEX -n |wc -m`
+		POS=0
+		count=0
+		while [ $POS -lt $CAR  ]; do
+        		PART=`echo ${RAW_HEX:$POS:16}`
+		        let POS+=16
+		        echo "$count: $PART" | xxd -r >> "$item.header"
+			let count++
+		done
+		# create the output file with header and file or header only if folder
+		cat "$item.header" >> "$DATA"
+		[ -f "$item" ] && dd if="$item" of="$DATA" conv=notrunc oflag=append > /dev/null 2>&1 
+	
+	done	
+	# create header with size / crc / version
+	
+	if [ ! -z $VERBOSE ]; then
+		echo ">Calculating checksum"
+	fi
+	CHKS=$(Get_LowHigh $(Get_Hash "$DATA" 0))
+	if [ ! -z $VERBOSE ]; then
+		echo ">Get Size"
+	fi
+	SIZE=$(Get_LowHigh `stat --printf %s "$DATA" | awk '{printf("%08x",$1+12)}'`)
+	if [ ! -z $VERBOSE ]; then
+		echo ">Write Header"
+	fi
+	echo -n "0: BD9A0C44 $CHKS $SIZE"  | xxd -r > "$HEADER"
+	cat "$HEADER" "$DATA" > "$OUTPUT"
+
+	echo "Checking Integrity of repacked Web UI:"
+	echo -e "\t->Version : $(Get_Version "$OUTPUT")"
+	sum32=$(Get_LowHigh $(Get_Bytes "$OUTPUT" 4))
+        calc_sum32=$(Get_Hash "$OUTPUT" 12)
+	[ ! "$sum32" = "$calc_sum32" ] && echo " !!!! checksum mismatch ! File Corrupted" && exit 1
+	echo -e "\t->Checksum verified ($sum32)"
+	echo
+	echo "Firmware successfully packed to $OUTPUT"
+	find -iname "*.header" -delete
+	cd ..
+	find -iname "*.data" -delete
+	find -iname "*.header" -delete
+}
+
+# main actions
+function webui
+{
+	if [ -f "$1" ]; then
+		FOUNDVERSION=$(Get_Version "$1")
+		echo "Found Web UI Version  : $FOUNDVERSION"
+		sum32=$(Get_LowHigh $(Get_Bytes "$1" 4)) 
+		calc_sum32=$(Get_Hash "$1" 12)
+		[ ! "$sum32" = "$calc_sum32" ] && echo "checksum mismatch ! File Corrupted" && exit 1 
+		if [ ! -z $VERBOSE ]; then
+			echo ">Checksum : $sum32"
+		fi
+		echo "Unpacking Files..."
+		WebUI_Unpack $1
+	else
+		echo "Repackaging the Web UI"
+		WebUI_Pack "$1"
+	fi
+}
+
+function copywebui
+{
+	echo "Copying custom Web UI from $CUSTOMWEBDIR to $WEBUIEXTRACTED"
+	cp -r $CUSTOMWEBDIR/* $WEBUIEXTRACTED/
+}
+
+function uploadwebfirmware
+{
+	echo "Uploading Web UI firmware $OUTPUTFILE to http://$SERVER/upgrade_htmls.cgi"
+	curl -u $USERNAME:$PASSWD -F file=@$OUTPUTFILE http://$SERVER/upgrade_htmls.cgi
+	if [ $? -ne 0 ]; then
+        echo "Failed to upload new Web UI."
+        exit 1
+    fi
+}
+
+function usage()
+{
+cat << EOF
+usage: $0 options
+
+This script unpack Foscam Web UI, add customizations, and re-package it.
+
+OPTIONS:
+   -h      Show this message
+   -w      Web UI file (e.g. 2.4.10.5.bin)
+   -s      Foscam IP Address (e.g. 192.168.1.100)
+   -u      Username with admin privileges (e.g. admin)
+   -c      Custom Web UI directory. Optional, defaults to custom_web.
+   -p      Corresponding password for user. Optional, defaults to prompting for password. 
+   -o      Name of output customized WebUI file. Optional, defaults to naming custom_<webuifilename>.
+   -v      Verbose
+EOF
+}
+
+# main programm
+WEBUIFILE=
+SERVER=
+USERNAME=
+CUSTOMWEBDIR=
+PASSWD=
+OUTPUTFILE=
+VERBOSE=
+FOUNDVERSION=
+WEBUIEXTRACTED=
+while getopts “hw:s:u:c:p:o:v” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         w)
+             WEBUIFILE=$OPTARG
+             ;;
+         s)
+             SERVER=$OPTARG
+             ;;
+         u)
+             USERNAME=$OPTARG
+             ;;
+         c)
+             CUSTOMWEBDIR=$OPTARG
+             ;;
+         p)
+             PASSWD=$OPTARG
+             ;;
+         o)
+             OUTPUTFILE=$OPTARG
+             ;;
+         v)
+             VERBOSE=1
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+# Make sure values are not empty
+if [[ -z $WEBUIFILE ]] || [[ -z $SERVER ]] || [[ -z $USERNAME ]] 
+then
+     usage
+     exit 1
+fi
+
+# Check if Web UI file exists
+if [ ! -f $WEBUIFILE ]
+then
+	echo "Couldn't find WEB UI file $WEBUIFILE"
+	exit 1
+fi
+
+# Ask for password if not provided
+if [[ -z $PASSWD ]]
+then
+	read -p "Enter password for $USERNAME: " PASSWD
+fi
+
+# Check if extracted directory already exists and cleanup if so
+WEBUIEXTRACTED=$WEBUIFILE"_extracted"
+if [ -d $WEBUIEXTRACTED ]
+then
+	echo "Cleaning up old $WEBUIEXTRACTED"
+	rm -rf $WEBUIEXTRACTED
+fi
+
+# Use default custom_web dir if not provided
+if [[ -z $CUSTOMWEBDIR ]]
+then
+	CUSTOMWEBDIR="custom_web"
+fi
+if [[ ! -d $CUSTOMWEBDIR ]]
+then
+	echo "Could not find custom web dir $CUSTOMWEBDIR"
+	exit 1
+fi
+
+# Create default outputfile if not provided
+if [[ -z $OUTPUTFILE ]]
+then
+	OUTPUTFILE="custom_$WEBUIFILE"
+fi
+
+# Cleanup old outputfile
+if [ -e $OUTPUTFILE ]
+then
+	echo "Cleaning up old $OUTPUTFILE"
+	rm -f $OUTPUTFILE
+fi
+
+echo ""
+webui $WEBUIFILE
+echo ""
+copywebui 
+echo ""
+webui $WEBUIEXTRACTED
+echo ""
+uploadwebfirmware
+echo ""
+echo "Completed."
+echo "Now just wait for camera to reboot."
