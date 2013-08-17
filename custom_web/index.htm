@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Foscam Bootstrap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <style>
+      body {
+        padding-top: 60px;
+      }
+    </style>
+
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="brand" href="index.htm">Foscam Bootstrap</a>
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li class="active"><a href="index_orig.htm">Settings</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+	  <a class="label" href="javascript:infrared_off();">IR Off</a> | <a class="label label-info" href="javascript:infrared_on();">IR On</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="row text-center">
+      	<p>
+	  <img src="videostream.cgi" class="img-polaroid">
+	</p>
+      </div> <!-- row -->
+    </div> <!-- container -->
+
+    <script src="jquery.min.js"></script>
+    <script>
+
+      function go_left() {
+        $.ajax({
+            url: "decoder_control.cgi?command=6",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Going left:", data);
+          }
+        });
+      }
+
+      function go_right() {
+        $.ajax({
+            url: "decoder_control.cgi?command=4",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Going right:", data);
+          }
+        });
+      }
+
+      function go_up() {
+        $.ajax({
+            url: "decoder_control.cgi?command=0",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Going up:", data);
+          }
+        });
+      }
+
+      function go_down() {
+        $.ajax({
+            url: "decoder_control.cgi?command=2",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Going down:", data);
+          }
+        });
+      }
+
+      function stop_moving() {
+        $.ajax({
+            url: "decoder_control.cgi?command=1",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Stopping::", data);
+          }
+        });
+      }
+
+      function infrared_off() {
+        $.ajax({
+            url: "decoder_control.cgi?command=94",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Infrared off:", data);
+          }
+        });
+      }
+
+      function infrared_on() {
+        $.ajax({
+            url: "decoder_control.cgi?command=95",
+          }).done(function ( data ) {
+          if( console && console.log ) {
+            console.log("Infrared on:", data);
+          }
+        });
+      }
+
+      $( document ).ready(function() {
+        $( document ).keydown(function (e) {
+          e.preventDefault();
+          var keyCode = e.keyCode || e.which,
+              arrow = {left: 37, up: 38, right: 39, down: 40 };
+
+          switch (keyCode) {
+            case arrow.left:
+              go_left();
+            break;
+            case arrow.up:
+              go_up();
+            break;
+            case arrow.right:
+              go_right();
+            break;
+            case arrow.down:
+              go_down();
+            break;
+          }
+        });
+
+        $( document ).keyup(function (e) {
+          e.preventDefault();
+          var keyCode = e.keyCode || e.which,
+              arrow = {left: 37, up: 38, right: 39, down: 40 };
+
+          switch (keyCode) {
+            case arrow.left:
+              stop_moving();
+            break;
+            case arrow.up:
+              stop_moving();
+            break;
+            case arrow.right:
+              stop_moving();
+            break;
+            case arrow.down:
+              stop_moving();
+            break;
+          }
+        });
+      });
+
+    </script>
+
+  </body>
+</html>

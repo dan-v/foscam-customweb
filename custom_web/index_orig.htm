@@ -1,0 +1,66 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+BODY {
+	MARGIN: 0px; BACKGROUND-COLOR: #969696; font: arial;
+}
+</style>
+<title></title>
+</head>
+<script src="public.js"></script>
+<script src="check_user.cgi"></script>
+<script language="javascript">
+var user;
+var pwd;
+var language=getcookie('language');
+if (language=='')
+	language='english';
+if (language=='spanish')
+	document.write('<script src="spanish/string.js"><\/script>');
+else if (language=='french')
+	document.write('<script src="french/string.js"><\/script>');
+else if (language=='simple_chinese')
+	document.write('<script src="simple_chinese/string.js"><\/script>');
+else if (language=='traditional_chinese')	
+	document.write('<script src = "traditional_chinese/string.js"><\/script>');
+else if (language=='Italian')	
+	document.write('<script src = "Italian/string.js"><\/script>');
+else if (language=='Polski')
+	document.write('<script src = "Polski/string.js"><\/script>');
+else if (language=='Deutsch')	
+	document.write('<script src = "Deutsch/string.js"><\/script>');
+else if (language=='Hungarian')	
+	document.write('<script src = "Hungarian/string.js"><\/script>');
+else if (language=='Netherlands')	
+	document.write('<script src = "Netherlands/string.js"><\/script>');
+else if (language=='Portugal')	
+	document.write('<script src = "Portugal/string.js"><\/script>');
+else if (language=='Czech')	
+	document.write('<script src = "Czech/string.js"><\/script>');
+else if (language=='Turkish')	
+	document.write('<script src = "Turkish/string.js"><\/script>');
+else if (language=='Russian')	
+	document.write('<script src = "Russian/string.js"><\/script>');
+else if (language=='Korean')	
+	document.write('<script src = "Korean/string.js"><\/script>');
+else if (language=='Indonesian')	
+	document.write('<script src = "Indonesian/string.js"><\/script>');
+else if (language=='Denmark')	
+	document.write('<script src = "Denmark/string.js"><\/script>');
+else
+	document.write('<script src="english/string.js"><\/script>');
+</script>	
+<script src="get_status.cgi"></script>
+
+<script>
+if (alias=='') alias=top.str_anonymous;
+	document.title=str_device+'('+alias+')';
+
+</script>
+<!--<iframe marginheight="0" marginwidth="0" width="100%" height="100%" frameborder="0" src="login.htm"></iframe>-->
+<frameset rows="0%,100%" frameborder="no" border="0" framespacing="0">
+	<frame name="vars" src="vars.htm" frameborder="no"></frame>
+	<frame name="main" frameborder="no"></frame>
+</frameset><noframes></noframes>
+</html>
