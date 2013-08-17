@@ -198,7 +198,7 @@ function usage()
 cat << EOF
 usage: $0 options
 
-This script unpack Foscam Web UI, add customizations, and re-package it.
+This script unpacks the Foscam Web UI, add customizations, and re-packages it.
 
 OPTIONS:
    -h      Show this message
@@ -211,6 +211,9 @@ OPTIONS:
    -v      Verbose
 EOF
 }
+
+# make sure gawk exists
+command -v gawk >/dev/null 2>&1 || { echo >&2 "I require gawk but it's not installed.  Aborting."; exit 1; }
 
 # main programm
 WEBUIFILE=
