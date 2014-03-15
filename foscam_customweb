@@ -179,6 +179,8 @@ function webui
 
 function copywebui
 {
+	echo "Backing up index.htm file to index_orig.htm"
+	cp -f $WEBUIEXTRACTED/index.htm $WEBUIEXTRACTED/index_orig.htm
 	echo "Copying custom Web UI from $CUSTOMWEBDIR to $WEBUIEXTRACTED"
 	cp -r $CUSTOMWEBDIR/* $WEBUIEXTRACTED/
 }

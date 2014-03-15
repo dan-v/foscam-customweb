@@ -13,9 +13,9 @@ Getting Environment Setup
 ===
 * git clone https://github.com/dan-v/foscam-customweb
 * cd foscam-customweb
-* wget -O /tmp/foscam_firmware.zip "http://foscam.us/downloads/MJPEG%20indoor%20PT%20camera-11.37.2.51%20(1).zip"
+* wget -O /tmp/foscam_firmware.zip "http://foscam.us/downloads/MJPEG%20indoor%20PT%20camera-11.37.2.55%20NA.zip"
 * unzip -o -d /tmp /tmp/foscam_firmware.zip
-* cp "/tmp/Web UI/2.4.10.5.bin" .
+* cp "/tmp/Web UI/2.0.10.9.bin" .
 
 Web UI Customizations
 ===
@@ -37,6 +37,6 @@ OPTIONS:
    -o      Name of output customized WebUI file. Optional, defaults to naming custom_<webuifilename>.
    -v      Verbose
    
-Example: ./foscam_customweb -w 2.4.10.5.bin -s 192.168.1.100 -u admin
+Example: ./foscam_customweb -w 2.0.10.9.bin -s 192.168.1.100 -u admin
 ```
 
